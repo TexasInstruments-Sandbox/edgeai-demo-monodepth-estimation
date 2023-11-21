@@ -81,10 +81,12 @@ class DisplayDrawer():
 
         self.image_width = int(display_width * image_scale)
         self.image_height = int(display_height * image_scale)
-        self.list_width = display_width - self.image_width
-        self.list_height = self.image_height
+        self.info_panel_width = display_width - self.image_width
+        self.info_panel_height = self.image_height
         self.perf_width = display_width
         self.perf_height = display_height - self.image_height
+
+        self.info_panel_static = self.colormap_image()
 
 
     def set_gst_info(self, app_out, gst_caps): 
@@ -137,7 +139,7 @@ class DisplayDrawer():
 
         frame = np.zeros((self.display_height, self.display_width, 3), dtype=np.uint8)
         frame[0:self.image_height, 0:self.image_width] = processed_image
-        frame[0:self.image_height, self.image_width:] = 255
+        frame[0:self.image_height, self.image_width:] = self.info_panel_static
 
         return frame
     
@@ -160,9 +162,15 @@ class DisplayDrawer():
 
         return image
 
-    def make_depth_map(self, input_image, infer_output):
+    def make_depth_map(self, input_image, infer_output, is_disparity=False):
         '''
-        Convert depth values from the output of the model into a heatmap image. This will scale all values to 0-255
+        Convert the depth map into a heatmap for easier visualization. Lower values will appear red (hot) and higher values will be blue (cold)
+
+        The infer output is assumed to be directly from inference, and be in a floating point format. The values are assumed to be relative depth, so there is no physical unit attached. These will be scaled to use the full range of the heatmap's color spectrum
+
+        If the output of the model is disparity (inverse of distance), then invert the values
+
+        The returned heatmap will be the same size as the input_image
         '''
         depth_values = infer_output[0,0]
         mm = depth_values.min()
@@ -172,7 +180,8 @@ class DisplayDrawer():
         depth_values -= mm
         depth_values *= 255/mM
 
-        # depth_values = 255 - depth_values #if using disparity / reverse colors
+        if is_disparity:
+            depth_values = 255 - depth_values
 
         heatmap = cv.applyColorMap(depth_values.astype(np.uint8), cv.COLORMAP_RAINBOW)
         #resize is the slowest operation here.. experiment with other interpolation methods to enhance performance
@@ -185,3 +194,29 @@ class DisplayDrawer():
         return output_image
     
         
+    def colormap_image(self):
+        '''
+        Produce a colormap image that will go in the info panel. This is assumed to be static
+        '''
+        size= (self.info_panel_height, self.info_panel_width, 3)
+        x1 = size[1]*1//4
+        x2 = size[1]*3//4
+        y1 = size[0]*1//8
+        y2 = size[0]*7//8
+        info_img = np.full(size, 255, dtype=np.uint8)      
+
+        value_scale_img = np.zeros((y2-y1, x2-x1, 1))
+        h = value_scale_img.shape[0]
+        value_increment_per_pixel = 255 / h
+
+        for row in range(h):
+            pixel_value = int(value_increment_per_pixel * row)
+            value_scale_img[h-row-1,...] = pixel_value
+
+        value_colormap = cv.applyColorMap(value_scale_img.astype(np.uint8), cv.COLORMAP_RAINBOW)
+        info_img[y1:y2, x1:x2] = value_colormap
+
+        cv.putText(info_img, "Closer Distance", (x1-5,y1), cv.FONT_HERSHEY_SIMPLEX, 0.75, color=(0, 0, 0), thickness=2)
+        cv.putText(info_img, "Farther Distance", (x1,y2+20), cv.FONT_HERSHEY_SIMPLEX, 0.75, color=(0, 0, 0), thickness=2)
+
+        return info_img

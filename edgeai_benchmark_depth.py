@@ -163,6 +163,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_selection', type=str, default=None, nargs='*')
     parser.add_argument('--target_device', type=str)
 
+    ## Uncomment line below to force a download
     # dataset_nyu = datasets.nyudepthv2.NYUDepthV2(path='./dependencies/datasets/nyudepthv2', download=True, split='val')
     cmds = parser.parse_args()
     settings = config_settings.ConfigSettings(cmds.settings_file, model_selection=cmds.model_selection,

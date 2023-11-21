@@ -2,11 +2,15 @@
 
 This demo application shows a depth-estimation using a single camera and a deep learning CNN. 
 
-This demo has been verified on the [AM62A SoC](https://www.ti.com/product/AM62A7) with the 9.0 Edge AI Linux SDK. 
+Depth is crucial for understanding and navigating 3-D space. Typically, depth is estimated using time-of-flight or LIDAR systems, which are high resolution, high accuracy, and generally high cost/power. Radar and ultrasonic sensors are alternatives, but have resolution limitations. Cameras are more ubiquitous, but the sensor inherently offers no depth information in the 2-D image, thereby requiring sophisticated postprocessing to infer depth. Stereo depth is quite accurate, but requires careful calibration and processing. Single camera depth is less accurate, but has lower cost -- in some cases, like detecting an object in the foreground vs. the background, this is perfectly suitable.
+
+The demo runs a depth-estimation neural network using a single camera. This produces a relative depth map - values may be somewhat related to real world measurements, but they are rarely accurate in general scenes/settings. With this in mind, the output depth map is postprocessed into a heatmap that displays distances using colors -- closer objects will be red or 'hot' whereas farther objects (e.g. the background) will be blue or 'cold'.
+
+This demo has been validated on the [AM62A SoC](https://www.ti.com/product/AM62A7) running the 9.0.0 Edge AI Linux SDK. It is expected to run equivalently well on other AM6xA / Edge AI processors from TI, like the TDA4VM, AM68A, and AM69A.
 
 ## How to run this demo
 
-Note: this demo borrows heavily from the [edgeai-gst-apps-retail-checkout](https://github.com/TexasInstruments/edgeai-gst-apps-retail-checkout) project for running constructing a image-processing gstreamer pipeline.
+Note: this demo borrows heavily from the [edgeai-gst-apps-retail-checkout](https://github.com/TexasInstruments/edgeai-gst-apps-retail-checkout) project for running constructing a image-processing gstreamer pipeline. The default model is MiDaS [1]
 
 1. Obtain an EVM for the AM6xA processor of choice, e.g. the [AM62A Starter Kit](https://www.ti.com/tool/SK-AM62A-LP)
 2. Flash an SD card with the Edge AI SDK (Linux) by following the quick start guide [(Quick start for AM62A)](https://dev.ti.com/tirex/explore/node?node=A__AQniYj7pI2aoPAFMxWtKDQ__am62ax-devtools__FUz-xrs__LATEST)
@@ -42,3 +46,6 @@ python3 scripts/edgeai_benchmark_depth.py --target_device AM62A edgeai_setting_i
 * [Edge AI Resources FAQ](https://e2e.ti.com/support/processors-group/processors/f/processors-forum/1236957/faq-edge-ai-studio-edge-ai-resources-for-am6xa-socs)
 * [TI Edge AI Github](https://github.com/TexasInstruments/edgeai)
 * [Edge AI Studio cloud-based resources](https://dev.ti.com/edgeaistudio/)
+
+## References
+[1] Rene Ranftl and Katrin Lasinger and David Hafner and Konrad Schindler and Vladlen Koltun, Towards Robust Monocular Depth Estimation: Mixing Datasets for Zero-shot Cross-dataset Transfer, IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI), 2020
