@@ -277,9 +277,9 @@ class ModelRunner():
         '''
         model dependent... 
         '''
-        print(len(tensor_buffer))
+        # print(len(tensor_buffer))
         in_shape = self.params['session']['input_details'][0]['shape']
-        print(in_shape)
+        # print(in_shape)
         in_type = self.params['session']['input_details'][0]['type']
         if 'float' in in_type: 
             np_type = np.float32
@@ -299,8 +299,6 @@ class ModelRunner():
         '''
         Assumed that format is x1,y1,x2,y2,score,class for each box (row) in the tensor
         '''
-
-
         for box in boxes_tensor:
             if self.params['postprocess'].get('normalized_detections'):
                 box[0] *= image_width

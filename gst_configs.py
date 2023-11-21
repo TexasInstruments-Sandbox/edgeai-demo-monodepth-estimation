@@ -27,7 +27,11 @@
 #  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+'''
+This file configures a gstreamer pipeline that will run this demo. 
 
+It is assumed there is 1 camera (imx219 or usb cameras supporting 720p or 1080p), 1 display, and 1 model to run
+'''
 import numpy as np
 import math
 import time
@@ -104,8 +108,8 @@ class GstBuilder():
         MAX_RESIZE_FACTOR = 4
 
 
-        # gst_string = f'   split_resize.  '
-        gst_string = f'   split_resize. ! {QUEUE_STR} '
+        gst_string = f'   split_resize.  '
+        # gst_string = f'   split_resize. ! {QUEUE_STR} '
 
         width_ratio = in_width / model_width
         height_ratio = in_height / model_height
@@ -139,8 +143,8 @@ class GstBuilder():
 
         # input from camera and get ready to split into two 
         gst_str = self.camera_params.input_gst_str 
-        # gst_str+= f'! {video_conv}  !  video/x-raw, format=NV12 ! {QUEUE_STR}  ! tiovxmultiscaler name=split_resize  ' 
-        gst_str+= f' ! {video_conv}  !  video/x-raw, format=NV12  ! tiovxmultiscaler name=split_resize  ' 
+        gst_str+= f'! {video_conv}  !  video/x-raw, format=NV12 ! {QUEUE_STR}  ! tiovxmultiscaler name=split_resize  ' 
+        # gst_str+= f' ! {video_conv}  !  video/x-raw, format=NV12  ! tiovxmultiscaler name=split_resize  ' 
         
         tensor_format=self.model_params['preprocess']['data_layout']
         data_type = model_obj.input_type
@@ -151,7 +155,6 @@ class GstBuilder():
 
         #do preprocessing
         tensor_format = 'BGR' if self.model_params['preprocess']['reverse_channels'] else 'RGB'
-        # gst_str += f' ! tiovxdlpreproc data-type={data_type} ! application/x-tensor-tiovx,  channel-order={self.model_params["session"]["input_data_layout"].lower()}, tensor-format={tensor_format.lower()}, tensor-width={model_obj.model_width}, tensor-height={model_obj.model_height} '
         gst_str += f' ! tiovxdlpreproc out-pool-size=4 data-type={data_type}   channel-order={self.model_params["session"]["input_data_layout"].lower()} tensor-format={tensor_format.lower()} '
         if self.model_params['session']['input_scale'] and self.model_params['session']['input_scale']:
             # subtract mean and multiply by scale in the tiovxdlpreproc
@@ -163,26 +166,24 @@ class GstBuilder():
         #output from preproc is a tensor
 
         #run inference and push into application code via appsink
-        # gst_str += f' ! tidlinferer model={model_obj.modeldir} ! appsink name={self.appsink_tensor_name} max-buffers=2 drop=True '
         gst_str += f' ! appsink name={self.appsink_tensor_name} max-buffers=2 drop=True '
 
         # another copy of the input image is resized and pushed to application code via appsink
-        # gst_str += f'   split_resize. !  video/x-raw, width={self.display.image_width}, height={self.display.image_height}, format=NV12 ! {video_conv} out-pool-size=4 ! video/x-raw, format=RGB ! appsink name={self.appsink_image_name} max-buffers=1 drop=True'
         gst_str += f'   split_resize. ! {QUEUE_STR}  ! video/x-raw, width={self.display.image_width}, height={self.display.image_height}, format=NV12 ! {video_conv} out-pool-size=4 ! video/x-raw, format=RGB ! appsink name={self.appsink_image_name} max-buffers=2 drop=True'
+
 
         #### boundary between input gstreamer string and output gstreamer string. Application code (appsink and appsrc) sits between these two. The two gstreamer strings are their own unique pipelines. 
         
+
         out_gst_str = ''
         # Application output will come from appsrc and be converted to more usable format (NV12)
         out_gst_str += f' appsrc format=GST_FORMAT_TIME is-live=true  name={self.appsrc_name} ! video/x-raw,  format={self.appsrc_output_format}, width={self.display.display_width}, height={self.display.display_height} '
-        out_gst_str += f' ! {video_conv} out-pool-size=4  ! video/x-raw, format=NV12  '
+        out_gst_str += f' ! queue ! {video_conv} out-pool-size=4  ! video/x-raw, format=NV12  '
 
         # Create an overlay with performance information
-        out_gst_str += f' ! queue  '
+        # out_gst_str += f' ! queue  '
         out_gst_str += f'!  tiperfoverlay main-title=\"\"  '
         # Push to the display via kmssink
-        # out_gst_str += f'! kmssink sync=false driver-name=tidss max-lateness=5000000 qos=True processing-deadline=15000000 connector-id=39 plane-id=31 force-modesetting=True'
-        # out_gst_str += f'! kmssink sync=false driver-name=tidss connector-id=39 plane-id=31 force-modesetting=True'
         out_gst_str += f'! kmssink sync=false driver-name=tidss  plane-id=31 force-modesetting=True'
         
         self.gst_str = gst_str
@@ -205,10 +206,7 @@ class GstBuilder():
         Parse the GST pipeline string and launch. 
         Retrieve application interfaces (appsink input, appsrc output) 
         '''
-
-
         print('Parsing GST pipeline: \ninput: %s\n\noutput: %s\n' % (self.gst_str, self.out_gst_str))
-
 
         self.pipe = Gst.parse_launch(self.gst_str)
         self.out_pipe = Gst.parse_launch(self.out_gst_str)
@@ -216,10 +214,7 @@ class GstBuilder():
         self.app_in_tensor = self.pipe.get_by_name(self.appsink_tensor_name)
         self.app_in_image = self.pipe.get_by_name(self.appsink_image_name)
         self.app_out = self.out_pipe.get_by_name(self.appsrc_name)
-        '''
-        self.app_in_image = None
-        self.app_out = None
-        '''
+
 
     def start_gst(self):
         '''
@@ -256,7 +251,6 @@ class GstBuilder():
         # get caps to help learn about input structure
         appsink_caps = sample.get_caps()
         struct = appsink_caps.get_structure(0)
-
 
         return data, struct
 

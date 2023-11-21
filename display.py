@@ -28,6 +28,8 @@
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 '''
+This class creates handles the display and visualization by modifying input frames and pushing an output frame to gstreamer. 
+
 Intended output display:
 +------------------------------+----------+
 |                              |          |
@@ -44,6 +46,8 @@ Intended output display:
 |        performance stats/load           |
 |                                         |
 +-----------------------------------------+
+
+The top two components of the display shown above will be made in this file. The bottom portion is blank so that tiperfoverlay can add performance overlay
 '''
 
 
@@ -157,21 +161,27 @@ class DisplayDrawer():
         return image
 
     def make_depth_map(self, input_image, infer_output):
-
+        '''
+        Convert depth values from the output of the model into a heatmap image. This will scale all values to 0-255
+        '''
         depth_values = infer_output[0,0]
         mm = depth_values.min()
         mM = depth_values.max()
-        print('Depth min (%f) and max(%f)' % (mm, mM))
+        # print('Depth min (%f) and max(%f)' % (mm, mM))
 
         depth_values -= mm
         depth_values *= 255/mM
 
-        # depth_values = 255 - depth_values
+        # depth_values = 255 - depth_values #if using disparity / reverse colors
 
         heatmap = cv.applyColorMap(depth_values.astype(np.uint8), cv.COLORMAP_RAINBOW)
+        #resize is the slowest operation here.. experiment with other interpolation methods to enhance performance
         heatmap = cv.resize(heatmap, (input_image.shape[1], input_image.shape[0]))
 
- 
-        return heatmap
+        #disable for higher performance
+        heatmap_weight = 0.75
+        output_image = cv.addWeighted(heatmap, heatmap_weight, input_image, 1-heatmap_weight, 0)
+
+        return output_image
     
         
