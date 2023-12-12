@@ -29,5 +29,5 @@
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-python3 ./monodepth_gst_vision_app.py -d /dev/video-usb-cam0 -m ./midas-9.0-am62a/ -c usb-1080p -o 1920x1080
+python3 ./monodepth_gst_vision_app.py -d /dev/video-usb-cam0 -m ./midas-9.0-62a/ -c usb-1080p -o 1920x1080
 # python3 ./monodepth_gst_vision_app_infer.py -d /dev/video-usb-cam0 -m ./fastdepth-9.0-am62a -c usb-1080p -o 1920x1080
